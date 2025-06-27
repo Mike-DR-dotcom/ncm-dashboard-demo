@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NCM Backup Review Dashboard</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.8.0/umd/Recharts.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NCM Backup Review Dashboard</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.8.0/umd/Recharts.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+        const { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
+        const { Calendar, CheckCircle, AlertCircle, Users, Target, Clock } = lucide;
+
+        const TRANSLATIONS = {
+            "en-US": {
+                "projectDashboard": "Project Dashboard",
+                "allTeamMembers": "All Team Members",
+                "allPriorities": "All Priorities",
+                "high": "High",
+                "medium": "Medium",
+                "low": "Low",
+                "allStatus": "All Status",
+                "completed": "Completed",
+                "inProgress": "In Progress",
+                "notStarted": "Not Started",
+                "overallProgress": "Overall Progress",
+                "activeTasks": "Active Tasks",
+                "teamMembers": "Team Members",
+                "activeMembers": "Active Members",
+                "upcomingDeadlines": "Upcoming Deadlines",
+                "next7Days": "Next 7 days",
+                "taskTimeline": "Task Timeline",
+                "teamWorkload": "Team Workload",
+                "statusDistribution": "Status Distribution",
+                "milestones": "Milestones",
+                "noUpcomingDeadlines": "No upcoming deadlines in the next 7 days"
+            }
+        };
+
+        const locale = 'en-US';
+        const t = (key) => TRANSLATIONS[locale]?.[key] || key;
+
+        // Sample data structure for demonstration
+        const sampleData = {
+            projectName: "NCM Backup Review Project",
+            tasks: [
+                { id: 1, name: "Onboarding/Offboarding review", assignee: "Michael", deadline: "2025-07-15", status: t("inProgress"), priority: t("high"), progress: 65, start: "2025-06-15" },
+                { id: 2, name: "Backup Alerting Review", assignee: "NOC", deadline: "2025-08-01", status: t("notStarted"), priority: t("medium"), progress: 0, start: "2025-07-20" },
+                { id: 3, name: "Reporting", assignee: "Michael", deadline: "2025-07-30", status: t("inProgress"), priority: t("medium"), progress: 40, start: "2025-07-01" }
+            ],
+            teamMembers: ["Michael", "Caylem", "NOC"],
+            milestones: [
+                { name: "Project Kickoff", date: "2025-06-15" },
+                { name: "Onboarding Review Complete", date: "2025-07-15" },
+                { name: "All Reviews Complete", date: "2025-08-01" },
+                { name: "Final Report", date: "2025-08-15" }
+            ]
+        };
+
+        const LucideIcon = ({ icon: IconComponent, ...props }) => {
+            return React.createElement('svg', {
+                ...props,
+                dangerouslySetInnerHTML: { __html: IconComponent.toSvg() }
+            });
+        };
+
+        const ProjectDashboard = () => {
+            const [projectData, setProjectData] = useState(sampleData);
+            const [filter, setFilter] = useState({ member: "", priority: "", status: "" });
+
+            // Calculate overall progress
+            const overallProgress = useMemo(() => {
+                const completedTasks = projectData.tasks.filter(task => task.status === t("completed")).length;
+                return Math.round((completedTasks / projectData.tasks.length) * 100);
+            }, [projectData.tasks]);
+
+            // Filter tasks based on current filter
+            const filteredTasks = useMemo(() => {
+                return projectData.tasks.filter(task => {
+                    return (
+                        (filter.member === "" || task.assignee === filter.member) &&
+                        (filter.priority === "" || task.priority === filter.priority) &&
+                        (filter.status === "" || task.status === filter.status)
+                    );
+                });
+            }, [projectData.tasks, filter]);
+
+            // Prepare data for Gantt chart
+            const ganttData = useMemo(() => {
+                return filteredTasks.map(task => {
+                    const startDate = new Date(task.start);
+                    const endDate = new Date(task.deadline);
+                    const projectStart = new Date("2025-06-15");
+                    
+                    const startDays = Math.floor((startDate - projectStart) / (1000 * 60 * 60 * 24));
+                    const duration = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
+                    const completedDays = Math.floor(duration * (task.progress / 100));
+                    
+                    return {
+                        name: task.name,
+                        assignee: task.assignee,
+                        start: startDays,
+                        duration: duration,
+                        completed: completedDays,
+                        progress: task.progress
+                    };
+                });
+            }, [filteredTasks]);
+
+            // Team workload data
+            const workloadData = useMemo(() => {
+                const workload = {};
+                projectData.tasks.forEach(task => {
+                    if (!workload[task.assignee]) {
+                        workload[task.assignee] = { completed: 0, inProgress: 0, notStarted: 0 };
+                    }
+                    if (task.status === t("completed")) workload[task.assignee].completed++;
+                    else if (task.status === t("inProgress")) workload[task.assignee].inProgress++;
+                    else workload[task.assignee].notStarted++;
+                });
+                
+                return Object.entries(workload).map(([name, data]) => ({
+                    name,
+                    ...data,
+                    total: data.completed + data.inProgress + data.notStarted
+                }));
+            }, [projectData.tasks]);
+
+            // Upcoming deadlines (next 7 days)
+            const upcomingDeadlines = useMemo(() => {
+                const today = new Date();
+                const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+                
+                return projectData.tasks
+                    .filter(task => {
+                        const deadline = new Date(task.deadline);
+                        return deadline >= today && deadline <= nextWeek && task.status !== t("completed");
+                    })
+                    .sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+            }, [projectData.tasks]);
+
+            const IconWrapper = ({ iconName, className = "w-5 h-5" }) => {
+                const iconMap = {
+                    CheckCircle,
+                    Target,
+                    Users,
+                    AlertCircle,
+                    Clock,
+                    Calendar
+                };
+                
+                const IconComponent = iconMap[iconName];
+                if (!IconComponent) return null;
+                
+                return React.createElement('i', {
+                    className: className,
+                    dangerouslySetInnerHTML: { __html: IconComponent.toSvg() }
+                });
+            };
+
+            return React.createElement('div', { className: "min-h-screen bg-gray-50 p-8" },
+                // Header
+                React.createElement('div', { className: "bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8" },
+                    React.createElement('h1', { className: "text-3xl font-bold text-gray-800" }, projectData.projectName),
+                    React.createElement('p', { className: "text-gray-600 mt-2" }, t('projectDashboard'))
+                ),
+
+                // Filter Controls
+                React.createElement('div', { className: "bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-8" },
+                    React.createElement('div', { className: "flex flex-wrap gap-4" },
+                        React.createElement('select', {
+                            className: "px-4 py-2 border rounded-md",
+                            value: filter.member,
+                            onChange: (e) => setFilter({...filter, member: e.target.value})
+                        },
+                            React.createElement('option', { value: "" }, t('allTeamMembers')),
+                            ...projectData.teamMembers.map(member => 
+                                React.createElement('option', { key: member, value: member }, member)
+                            )
+                        ),
+                        
+                        React.createElement('select', {
+                            className: "px-4 py-2 border rounded-md",
+                            value: filter.priority,
+                            onChange: (e) => setFilter({...filter, priority: e.target.value})
+                        },
+                            React.createElement('option', { value: "" }, t('allPriorities')),
+                            React.createElement('option', { value: t('high') }, t('high')),
+                            React.createElement('option', { value: t('medium') }, t('medium')),
+                            React.createElement('option', { value: t('low') }, t('low'))
+                        ),
+                        
+                        React.createElement('select', {
+                            className: "px-4 py-2 border rounded-md",
+                            value: filter.status,
+                            onChange: (e) => setFilter({...filter, status: e.target.value})
+                        },
+                            React.createElement('option', { value: "" }, t('allStatus')),
+                            React.createElement('option', { value: t('completed') }, t('completed')),
+                            React.createElement('option', { value: t('inProgress') }, t('inProgress')),
+                            React.createElement('option', { value: t('notStarted') }, t('notStarted'))
+                        )
+                    )
+                ),
+
+                // Key Metrics
+                React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" },
+                    React.createElement('div', { className: "bg-white rounded-lg shadow-sm border border-gray-200 p-6" },
+                        React.createElement('div', { className: "flex items-center justify-between mb-4" },
+                            React.createElement('h3', { className: "text-sm font-medium text-gray-600" }, t('overallProgress')),
+                            React.createElement(IconWrapper, { iconName: 'CheckCircle', className: "w-5 h-5 text-green-500" })
+                        ),
+                        React.createElement('div', { className: "mb-2" },
+                            React.createElement('div', { className: "text-2xl font-bold text-gray-800" }, overallProgress + '%')
+                        ),
+                        React.createElement('div', { className: "w-full bg-gray-200 rounded-full h-2" },
+                            React.createElement('div', {
+                                className: "bg-green-500 h-2 rounded-full",
+                                style: { width: `${overallProgress}%` }
+                            })
+                        )
+                    ),
+
+                    React.createElement('div', { className: "bg-white rounded-lg shadow-sm border border-gray-200 p-6" },
+                        React.createElement('div', { className: "flex items-center justify-between mb-4" },
+                            React.createElement('h3', { className: "text-sm font-medium text-gray-600" }, t('activeTasks')),
+                            React.createElement(IconWrapper, { iconName: 'Target', className: "w-5 h-5 text-blue-500" })
+                        ),
+                        React.createElement('div', { className: "text-2xl font-bold text-gray-800" },
+                            projectData.tasks.filter(t => t.status === "In Progress").length
+                        ),
+                        React.createElement('div', { className: "text-sm text-gray-500" }, t('inProgress'))
+                    ),
+
+                    React.createElement('div', { className: "bg-white rounded-lg shadow-sm border border-gray-200 p-6" },
+                        React.createElement('div', { className: "flex items-center justify-between mb-4" },
+                            React.createElement('h3', { className: "text-sm font-medium text-gray-600" }, t('teamMembers')),
+                            React.createElement(IconWrapper, { iconName: 'Users', className: "w-5 h-5 text-purple-500" })
+                        ),
+                        React.createElement('div', { className: "text-2xl font-bold text-gray-800" }, projectData.teamMembers.length),
+                        React.createElement('div', { className: "text-sm text-gray-500" }, t('activeMembers'))
+                    ),
+
+                    React.createElement('div', { className: "bg-white rounded-lg shadow-sm border border-gray-200 p-6" },
+                        React.createElement('div', { className: "flex items-center justify-between mb-4" },
+                            React.createElement('h3', { className: "text-sm font-medium text-gray-600" }, t('upcomingDeadlines')),
+                            React.createElement(IconWrapper, {
+    </script>
+</body>
+</html>
