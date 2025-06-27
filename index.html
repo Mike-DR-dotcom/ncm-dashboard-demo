@@ -9,21 +9,8 @@
     <script src="https://unpkg.com/recharts@2.8.0/umd/Recharts.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .icon {
-            width: 20px;
-            height: 20px;
-            display: inline-block;
-        }
-        .icon-sm {
-            width: 16px;
-            height: 16px;
-        }
-        .icon-lg {
-            width: 24px;
-            height: 24px;
-        }
-    </style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.js"></script>
 </head>
 <body>
     <div id="root"></div>
@@ -32,13 +19,20 @@
         const { useState, useMemo } = React;
         const { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
 
-        // Simple icon components using Unicode symbols
-        const CheckCircleIcon = () => <span className="icon text-green-500">✅</span>;
-        const TargetIcon = () => <span className="icon text-blue-500">🎯</span>;
-        const UsersIcon = () => <span className="icon text-purple-500">👥</span>;
-        const AlertCircleIcon = () => <span className="icon text-orange-500">⚠️</span>;
-        const ClockIcon = () => <span className="icon text-orange-500">⏰</span>;
-        const CalendarIcon = () => <span className="icon text-purple-500">📅</span>;
+        // Icon components using Lucide
+        const CheckCircle = ({ className }) => <i data-lucide="check-circle" className={className}></i>;
+        const Target = ({ className }) => <i data-lucide="target" className={className}></i>;
+        const Users = ({ className }) => <i data-lucide="users" className={className}></i>;
+        const AlertCircle = ({ className }) => <i data-lucide="alert-circle" className={className}></i>;
+        const Clock = ({ className }) => <i data-lucide="clock" className={className}></i>;
+        const Calendar = ({ className }) => <i data-lucide="calendar" className={className}></i>;
+
+        // Initialize Lucide icons after component mounts
+        React.useEffect(() => {
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        }, []);
 
         const TRANSLATIONS = {
             "projectDashboard": "Project Dashboard",
@@ -66,13 +60,40 @@
 
         const t = (key) => TRANSLATIONS[key] || key;
 
-        // Sample data structure for demonstration
+        // Sample data for NCM Backup Review Project
         const sampleData = {
             projectName: "NCM Backup Review Project",
             tasks: [
-                { id: 1, name: "Onboarding/Offboarding review", assignee: "Michael", deadline: "2025-07-15", status: "In Progress", priority: "High", progress: 65, start: "2025-06-15" },
-                { id: 2, name: "Backup Alerting Review", assignee: "NOC", deadline: "2025-08-01", status: "Not Started", priority: "Medium", progress: 0, start: "2025-07-20" },
-                { id: 3, name: "Reporting", assignee: "Michael", deadline: "2025-07-30", status: "In Progress", priority: "Medium", progress: 40, start: "2025-07-01" }
+                { 
+                    id: 1, 
+                    name: "Onboarding/Offboarding review", 
+                    assignee: "Michael", 
+                    deadline: "2025-07-15", 
+                    status: "In Progress", 
+                    priority: "High", 
+                    progress: 65, 
+                    start: "2025-06-15" 
+                },
+                { 
+                    id: 2, 
+                    name: "Backup Alerting Review", 
+                    assignee: "NOC", 
+                    deadline: "2025-08-01", 
+                    status: "Not Started", 
+                    priority: "Medium", 
+                    progress: 0, 
+                    start: "2025-07-20" 
+                },
+                { 
+                    id: 3, 
+                    name: "Reporting", 
+                    assignee: "Michael", 
+                    deadline: "2025-07-30", 
+                    status: "In Progress", 
+                    priority: "Medium", 
+                    progress: 40, 
+                    start: "2025-07-01" 
+                }
             ],
             teamMembers: ["Michael", "Caylem", "NOC"],
             milestones: [
@@ -86,6 +107,13 @@
         const ProjectDashboard = () => {
             const [projectData, setProjectData] = useState(sampleData);
             const [filter, setFilter] = useState({ member: "", priority: "", status: "" });
+
+            // Update icons when component updates
+            React.useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            });
 
             // Calculate overall progress
             const overallProgress = useMemo(() => {
@@ -103,6 +131,28 @@
                     );
                 });
             }, [projectData.tasks, filter]);
+
+            // Prepare data for Gantt chart
+            const ganttData = useMemo(() => {
+                return filteredTasks.map(task => {
+                    const startDate = new Date(task.start);
+                    const endDate = new Date(task.deadline);
+                    const projectStart = new Date("2025-06-15");
+                    
+                    const startDays = Math.floor((startDate - projectStart) / (1000 * 60 * 60 * 24));
+                    const duration = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
+                    const completedDays = Math.floor(duration * (task.progress / 100));
+                    
+                    return {
+                        name: task.name,
+                        assignee: task.assignee,
+                        start: startDays,
+                        duration: duration,
+                        completed: completedDays,
+                        progress: task.progress
+                    };
+                });
+            }, [filteredTasks]);
 
             // Team workload data
             const workloadData = useMemo(() => {
@@ -195,7 +245,7 @@
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-sm font-medium text-gray-600">{t('overallProgress')}</h3>
-                                <CheckCircleIcon />
+                                <CheckCircle className="w-5 h-5 text-green-500" />
                             </div>
                             <div className="mb-2">
                                 <div className="text-2xl font-bold text-gray-800">{overallProgress}%</div>
@@ -211,7 +261,7 @@
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-sm font-medium text-gray-600">{t('activeTasks')}</h3>
-                                <TargetIcon />
+                                <Target className="w-5 h-5 text-blue-500" />
                             </div>
                             <div className="text-2xl font-bold text-gray-800">
                                 {projectData.tasks.filter(t => t.status === "In Progress").length}
@@ -222,7 +272,7 @@
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-sm font-medium text-gray-600">{t('teamMembers')}</h3>
-                                <UsersIcon />
+                                <Users className="w-5 h-5 text-purple-500" />
                             </div>
                             <div className="text-2xl font-bold text-gray-800">{projectData.teamMembers.length}</div>
                             <div className="text-sm text-gray-500">{t('activeMembers')}</div>
@@ -231,10 +281,34 @@
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-sm font-medium text-gray-600">{t('upcomingDeadlines')}</h3>
-                                <AlertCircleIcon />
+                                <AlertCircle className="w-5 h-5 text-orange-500" />
                             </div>
                             <div className="text-2xl font-bold text-gray-800">{upcomingDeadlines.length}</div>
                             <div className="text-sm text-gray-500">{t('next7Days')}</div>
+                        </div>
+                    </div>
+
+                    {/* Gantt Chart */}
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+                        <h2 className="text-lg font-semibold text-gray-800 mb-4">{t('taskTimeline')}</h2>
+                        <div style={{ overflowX: 'auto' }}>
+                            <div style={{ width: '800px' }}>
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <BarChart
+                                        data={ganttData}
+                                        layout="vertical"
+                                        margin={{ top: 20, right: 30, left: 150, bottom: 5 }}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis type="number" />
+                                        <YAxis dataKey="name" type="category" width={140} />
+                                        <Tooltip />
+                                        <Bar dataKey="start" stackId="a" fill="transparent" />
+                                        <Bar dataKey="completed" stackId="a" fill="#22c55e" name="Completed" />
+                                        <Bar dataKey="duration" stackId="a" fill="#e5e7eb" name="Remaining" />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
                     </div>
 
@@ -284,8 +358,8 @@
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                             <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                                <ClockIcon />
-                                <span className="ml-2">{t('upcomingDeadlines')}</span>
+                                <Clock className="w-5 h-5 mr-2 text-orange-500" />
+                                {t('upcomingDeadlines')}
                             </h2>
                             <div className="space-y-3">
                                 {upcomingDeadlines.length === 0 ? (
@@ -312,8 +386,8 @@
 
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                             <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                                <CalendarIcon />
-                                <span className="ml-2">{t('milestones')}</span>
+                                <Calendar className="w-5 h-5 mr-2 text-purple-500" />
+                                {t('milestones')}
                             </h2>
                             <div className="space-y-3">
                                 {projectData.milestones.map((milestone, index) => (
